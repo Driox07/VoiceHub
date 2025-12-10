@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: Voice Models API
+  description: API para gestionar modelos de voz RVC
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8000/api
+    description: Servidor local
+
+components:
+  schemas:
+    Model:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        name:
+          type: string
+          example: "Homer Simpson"
+        description:
+          type: string
+          example: "Modelo de voz de Homer Simpson"
+        pth_file:
+          type: string
+          example: "models/homer_simpson.pth"
+        index_file:
+          type: string
+          example: "models/homer_simpson.index"
+        technology:
+          type: string
+          enum: [RVMPE]
+          example: "RVMPE"
+        epochs:
+          type: integer
+          example: 500
+        language:
+          type: string
+          enum: [Español, Inglés]
+          example: "Español"
+          
+    ModelCreate:
+      type: object
+      required:
+        - created_at
+        - name
+        - technology
+        - epochs
+        - language
+      properties:
+        created_at:
+          type: string
+          format: date-time
+        name:
+          type: string
+        description:
+          type: string
+        technology:
+          type: string
+          enum: [RVMPE]
+        epochs:
+          type: integer
+        language:
+          type: string
+          enum: [Español, Inglés]
+          
+    ModelUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        technology:
+          type: string
+          enum: [RVMPE]
+        epochs:
+          type: integer
+        language:
+          type: string
+          enum: [Español, Inglés]
+          
+    PaginatedModels:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Model'
+        total:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+        pages:
+          type: integer
+
+paths:
+  /model:
+    get:
+      summary: Listar modelos con paginación y búsqueda
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Buscar por nombre
+      responses:
+        '200':
+          description: Lista de modelos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedModels'
+                
+    post:
+      summary: Crear nuevo modelo
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - created_at
+                - name
+                - pth_file
+                - index_file
+                - technology
+                - epochs
+                - language
+              properties:
+                created_at:
+                  type: string
+                  format: date-time
+                name:
+                  type: string
+                description:
+                  type: string
+                pth_file:
+                  type: string
+                  format: binary
+                index_file:
+                  type: string
+                  format: binary
+                technology:
+                  type: string
+                  enum: [RVMPE]
+                epochs:
+                  type: integer
+                language:
+                  type: string
+                  enum: [Español, Inglés]
+      responses:
+        '201':
+          description: Modelo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '400':
+          description: Datos inválidos
+          
+  /model/{model_id}:
+    get:
+      summary: Obtener detalles de un modelo
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Detalles del modelo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '404':
+          description: Modelo no encontrado
+          
+    put:
+      summary: Actualizar modelo
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                created_at:
+                  type: string
+                  format: date-time
+                name:
+                  type: string
+                description:
+                  type: string
+                pth_file:
+                  type: string
+                  format: binary
+                index_file:
+                  type: string
+                  format: binary
+                technology:
+                  type: string
+                  enum: [RVMPE]
+                epochs:
+                  type: integer
+                language:
+                  type: string
+                  enum: [Español, Inglés]
+      responses:
+        '200':
+          description: Modelo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Model'
+        '404':
+          description: Modelo no encontrado
+          
+    delete:
+      summary: Eliminar modelo
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Modelo eliminado
+        '404':
+          description: Modelo no encontrado
+          
+  /model/{model_id}/download/{file_type}:
+    get:
+      summary: Descargar archivo del modelo
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: file_type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [pth, index]
+      responses:
+        '200':
+          description: Archivo descargado
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Archivo no encontrado
