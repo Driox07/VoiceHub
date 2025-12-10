@@ -18,11 +18,18 @@ Base.metadata.create_all(bind=engine)
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+# Create audio outputs directory
+AUDIO_DIR = Path("audio_outputs")
+AUDIO_DIR.mkdir(exist_ok=True)
+
 app = FastAPI(
     title="Voice Models API",
     description="API para gestionar modelos de voz RVC",
     version="1.0.0"
 )
+
+# Mount static files for audio
+app.mount("/audio", StaticFiles(directory=str(AUDIO_DIR)), name="audio")
 
 # Templates
 templates = Jinja2Templates(directory="simple_app/templates")
@@ -219,6 +226,48 @@ def download_file(model_id: int, file_type: str, db: Session = Depends(get_db)):
         filename=filename,
         media_type="application/octet-stream"
     )
+
+# TTS Testing Endpoint
+@app.post("/api/model/{model_id}/test-tts")
+async def test_tts(
+    model_id: int,
+    text: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Simula la generación de TTS con el modelo.
+    En producción, aquí integrarías con RVC/Inference.
+    """
+    model = db.query(models.Model).filter(models.Model.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Modelo no encontrado")
+    
+    # Simular procesamiento TTS
+    # En una implementación real, aquí usarías el modelo .pth y .index
+    # con una librería de inferencia de RVC
+    
+    # Por ahora, creamos un archivo de audio simulado (placeholder)
+    output_filename = f"tts_{model_id}_{datetime.now().timestamp()}.txt"
+    output_path = AUDIO_DIR / output_filename
+    
+    # Guardar metadata del audio generado
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"Texto: {text}\n")
+        f.write(f"Modelo: {model.name}\n")
+        f.write(f"Tecnología: {model.technology}\n")
+        f.write(f"Epochs: {model.epochs}\n")
+        f.write(f"Idioma: {model.language}\n")
+        f.write(f"\n[En producción, aquí estaría el audio generado con RVC]\n")
+        f.write(f"PTH: {model.pth_file}\n")
+        f.write(f"INDEX: {model.index_file}\n")
+    
+    return {
+        "message": "TTS simulado generado (integra RVC para audio real)",
+        "model_name": model.name,
+        "text": text,
+        "info_file": f"/audio/{output_filename}",
+        "note": "Para audio real, integra con RVC inference usando los archivos .pth y .index"
+    }
 
 # Frontend
 @app.get("/")

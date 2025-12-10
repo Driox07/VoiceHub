@@ -246,6 +246,7 @@
                     <td>{{ model.language }}</td>
                     <td>{{ model.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td>
+                        <button onclick="openTestModal({{ model.id }}, '{{ model.name }}')" class="btn" style="background: #6f42c1; padding: 5px 10px; font-size: 12px;">🎤 Probar</button>
                         <a href="/api/model/{{ model.id }}/download/pth" class="btn btn-download">📥 PTH</a>
                         <a href="/api/model/{{ model.id }}/download/index" class="btn btn-download">📥 INDEX</a>
                         <button onclick="deleteModel({{ model.id }})" class="btn btn-danger">Eliminar</button>
@@ -284,6 +285,35 @@
         <p style="margin-top: 30px; text-align: center; color: #666;">
             <a href="/docs" target="_blank" style="color: #007bff;">📚 Ver documentación de la API</a>
         </p>
+    </div>
+    
+    <!-- Modal Probar TTS -->
+    <div id="testModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTestModal()">&times;</span>
+            <h2 id="testModalTitle">Probar Modelo TTS</h2>
+            <form id="testForm">
+                <input type="hidden" id="test_model_id">
+                
+                <div class="form-group">
+                    <label for="test_text">Texto a sintetizar</label>
+                    <textarea id="test_text" name="text" rows="4" placeholder="Escribe el texto que quieres convertir a voz..." required></textarea>
+                    <small style="color: #666;">El audio se generará usando el modelo seleccionado</small>
+                </div>
+                
+                <button type="submit" class="btn" style="background: #6f42c1;">🎤 Generar Audio</button>
+            </form>
+            
+            <div id="testResult" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
+                <h3>Resultado:</h3>
+                <p id="resultMessage"></p>
+                <div id="audioPlayer"></div>
+                <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                    <strong>Nota:</strong> Esta es una simulación. Para generar audio real, necesitas integrar con 
+                    <a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI" target="_blank">RVC Inference</a>.
+                </p>
+            </div>
+        </div>
     </div>
     
     <!-- Modal Crear Modelo -->
@@ -402,11 +432,61 @@
             }
         }
         
+        function openTestModal(modelId, modelName) {
+            document.getElementById('testModal').style.display = 'block';
+            document.getElementById('test_model_id').value = modelId;
+            document.getElementById('testModalTitle').textContent = `Probar: ${modelName}`;
+            document.getElementById('testResult').style.display = 'none';
+        }
+        
+        function closeTestModal() {
+            document.getElementById('testModal').style.display = 'none';
+            document.getElementById('testForm').reset();
+            document.getElementById('testResult').style.display = 'none';
+        }
+        
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const modelId = document.getElementById('test_model_id').value;
+            const text = document.getElementById('test_text').value;
+            
+            const formData = new FormData();
+            formData.append('text', text);
+            
+            try {
+                const response = await fetch(`/api/model/${modelId}/test-tts`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('resultMessage').innerHTML = `
+                        <strong>Modelo:</strong> ${data.model_name}<br>
+                        <strong>Texto:</strong> ${data.text}<br>
+                        <strong>Estado:</strong> ${data.message}<br>
+                        <a href="${data.info_file}" target="_blank">Ver información generada</a>
+                    `;
+                    document.getElementById('testResult').style.display = 'block';
+                } else {
+                    alert('Error al generar TTS');
+                }
+            } catch (error) {
+                alert('Error de conexión');
+            }
+        });
+        
         // Close modal when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('createModal');
-            if (event.target == modal) {
+            const createModal = document.getElementById('createModal');
+            const testModal = document.getElementById('testModal');
+            
+            if (event.target == createModal) {
                 closeCreateModal();
+            }
+            if (event.target == testModal) {
+                closeTestModal();
             }
         }
     </script>
