@@ -5,3 +5,4 @@ instance/
 .env
 uploads/
 voicehub.db
+voice_models.db
