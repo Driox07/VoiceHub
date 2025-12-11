@@ -16,11 +16,21 @@ API y frontend para gestionar modelos de voz RVC.
 ## Instalación
 
 ```bash
+# Crear un entorno virtual
+python -m venv venv
+
+# Activar el entorno virtual
+
+# Linux/MacOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
+
 # Instalar dependencias
-pip install -r requirements-simple.txt
+pip install -r requirements.txt
 
 # Ejecutar servidor
-python -m uvicorn simple_app.main:app --reload
+python run.py
 ```
 
 ## Uso
@@ -52,9 +62,11 @@ python -m uvicorn simple_app.main:app --reload
 
 ## Probar Modelos (TTS)
 
-Cada modelo tiene un botón "🎤 Probar" que abre un modal donde puedes:
+Cada modelo tiene un botón "🎤 Probar" que permite al usuario probar el modelo con un sintetizador TTS:
 1. Escribir texto para sintetizar
-2. Generar audio con el modelo y escucharlo
+2. Selecciona el modelo TTS base que se usará para inferir
+3. Seleccionar el tono de voz (pitch)
+4. Se infiere el audio con RVC y se devuelve un archivo reproducible
 
 ## Base de Datos
 
@@ -62,7 +74,7 @@ SQLite3 en `voice_models.db`
 
 Los archivos se guardan en:
 - `uploads/` - Archivos .pth y .index
-- `audio_outputs/` - Audios generados por TTS
+- `audio_outputs/` - Audios generados por TTS y RVC
 
 ## Licencia
 [VoiceHub](https://github.com/Driox07/VoiceHub) © 2025 by [Adrián Sánchez Galera](https://github.com/Driox07) & [José Manuel de Torres Domínguez](https://github.com/PiporGames) is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
