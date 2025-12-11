@@ -298,7 +298,19 @@
                 <div class="form-group">
                     <label for="test_text">Texto a sintetizar</label>
                     <textarea id="test_text" name="text" rows="4" placeholder="Escribe el texto que quieres convertir a voz..." required></textarea>
-                    <small style="color: #666;">El audio se generará usando el modelo seleccionado</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="tts_voice">Voz TTS Base</label>
+                    <select id="tts_voice" name="tts_voice" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Cargando voces...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="pitch">Pitch (Semitonos)</label>
+                    <input type="number" id="pitch" name="pitch" value="0" step="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <small style="color: #666;">Ajuste de tono para RVC (ej: -12 para bajar una octava, +12 para subir)</small>
                 </div>
                 
                 <button type="submit" class="btn" style="background: #6f42c1;">🎤 Generar Audio</button>
@@ -308,10 +320,6 @@
                 <h3>Resultado:</h3>
                 <p id="resultMessage"></p>
                 <div id="audioPlayer"></div>
-                <p style="margin-top: 10px; color: #666; font-size: 14px;">
-                    <strong>Nota:</strong> Esta es una simulación. Para generar audio real, necesitas integrar con 
-                    <a href="https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI" target="_blank">RVC Inference</a>.
-                </p>
             </div>
         </div>
     </div>
@@ -385,6 +393,37 @@
             document.getElementById('createModal').style.display = 'none';
             document.getElementById('createForm').reset();
         }
+
+        // Load voices
+        let ttsVoices = [];
+        async function loadVoices() {
+            try {
+                const response = await fetch('/api/tts-voices');
+                if (response.ok) {
+                    ttsVoices = await response.json();
+                    const select = document.getElementById('tts_voice');
+                    select.innerHTML = '';
+                    
+                    // Default voice preference (try Spanish first, then English)
+                    const defaultVoice = "es-ES-AlvaroNeural";
+                    
+                    ttsVoices.forEach(voice => {
+                        const option = document.createElement('option');
+                        option.value = voice.ShortName;
+                        // Use ShortName or DisplayName if available
+                        const displayName = voice.DisplayName || voice.ShortName;
+                        option.textContent = `${displayName} (${voice.Locale}) - ${voice.Gender}`;
+                        if (voice.ShortName === defaultVoice) option.selected = true;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading voices', error);
+                document.getElementById('tts_voice').innerHTML = '<option value="en-US-AriaNeural">Error cargando voces (Usando default)</option>';
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadVoices);
         
         document.getElementById('createForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -450,9 +489,18 @@
             
             const modelId = document.getElementById('test_model_id').value;
             const text = document.getElementById('test_text').value;
+            const ttsVoice = document.getElementById('tts_voice').value;
+            const pitch = document.getElementById('pitch').value;
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "⏳ Generando...";
             
             const formData = new FormData();
             formData.append('text', text);
+            formData.append('tts_voice', ttsVoice);
+            formData.append('pitch', pitch);
             
             try {
                 const response = await fetch(`/api/model/${modelId}/test-tts`, {
@@ -465,15 +513,34 @@
                     document.getElementById('resultMessage').innerHTML = `
                         <strong>Modelo:</strong> ${data.model_name}<br>
                         <strong>Texto:</strong> ${data.text}<br>
+                        <strong>Voz Base:</strong> ${data.tts_voice}<br>
                         <strong>Estado:</strong> ${data.message}<br>
-                        <a href="${data.info_file}" target="_blank">Ver información generada</a>
+                    `;
+                    
+                    // Add timestamp to bypass cache
+                    const audioUrl = `${data.info_file}?t=${new Date().getTime()}`;
+                    const rawUrl = `${data.raw_tts_file}?t=${new Date().getTime()}`;
+                    
+                    document.getElementById('audioPlayer').innerHTML = `
+                        <audio controls autoplay style="width: 100%; margin-top: 10px;">
+                            <source src="${audioUrl}" type="audio/wav">
+                            Tu navegador no soporta el elemento de audio.
+                        </audio>
+                        <div style="margin-top: 5px;">
+                            <a href="${rawUrl}" target="_blank" style="font-size: 12px; color: #666;">Escuchar TTS original (sin RVC)</a>
+                        </div>
                     `;
                     document.getElementById('testResult').style.display = 'block';
                 } else {
-                    alert('Error al generar TTS');
+                    const err = await response.json();
+                    alert('Error al generar TTS: ' + (err.detail || 'Error desconocido'));
                 }
             } catch (error) {
+                console.error(error);
                 alert('Error de conexión');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
             }
         });
         

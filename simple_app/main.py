@@ -10,6 +10,17 @@ import shutil
 
 from simple_app.database import engine, Base, get_db
 from simple_app import models, schemas
+import edge_tts
+import asyncio
+import sys
+
+# Ensure the root directory is in sys.path to import rvc
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from rvc.infer.infer import VoiceConverter
+
+# Initialize VoiceConverter
+infer_pipeline = VoiceConverter()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -227,46 +238,88 @@ def download_file(model_id: int, file_type: str, db: Session = Depends(get_db)):
         media_type="application/octet-stream"
     )
 
+@app.get("/api/tts-voices")
+async def get_tts_voices():
+    """
+    Lista las voces disponibles para TTS (Edge-TTS).
+    Filtra solo voces en Español e Inglés.
+    """
+    all_voices = await edge_tts.list_voices()
+    
+    # Filter for English (en-) and Spanish (es-)
+    # Exclude voices known to be problematic if necessary, though usually list_voices returns available ones.
+    filtered_voices = [
+        v for v in all_voices 
+        if (v['Locale'].startswith('en-') or v['Locale'].startswith('es-'))
+    ]
+    
+    return sorted(filtered_voices, key=lambda x: x['ShortName'])
+
 # TTS Testing Endpoint
 @app.post("/api/model/{model_id}/test-tts")
 async def test_tts(
     model_id: int,
     text: str = Form(...),
+    tts_voice: str = Form("en-US-AriaNeural"),
+    pitch: int = Form(0),
     db: Session = Depends(get_db)
 ):
     """
-    Simula la generación de TTS con el modelo.
-    En producción, aquí integrarías con RVC/Inference.
+    Genera audio TTS y luego aplica RVC.
     """
+    print(f"DEBUG: test_tts called with text='{text}', tts_voice='{tts_voice}', pitch={pitch}")
+    
     model = db.query(models.Model).filter(models.Model.id == model_id).first()
     if not model:
         raise HTTPException(status_code=404, detail="Modelo no encontrado")
     
-    # Simular procesamiento TTS
-    # En una implementación real, aquí usarías el modelo .pth y .index
-    # con una librería de inferencia de RVC
+    # 1. Generate TTS
+    timestamp = datetime.now().timestamp()
+    tts_filename = f"tts_raw_{model_id}_{timestamp}.wav"
+    tts_path = AUDIO_DIR / tts_filename
     
-    # Por ahora, creamos un archivo de audio simulado (placeholder)
-    output_filename = f"tts_{model_id}_{datetime.now().timestamp()}.txt"
+    communicate = edge_tts.Communicate(text, tts_voice)
+    try:
+        await communicate.save(str(tts_path))
+    except Exception as e:
+        print(f"ERROR in edge_tts: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error generando TTS con voz '{tts_voice}': {str(e)}")
+    
+    # 2. Apply RVC
+    output_filename = f"rvc_out_{model_id}_{timestamp}.wav"
     output_path = AUDIO_DIR / output_filename
     
-    # Guardar metadata del audio generado
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(f"Texto: {text}\n")
-        f.write(f"Modelo: {model.name}\n")
-        f.write(f"Tecnología: {model.technology}\n")
-        f.write(f"Epochs: {model.epochs}\n")
-        f.write(f"Idioma: {model.language}\n")
-        f.write(f"\n[En producción, aquí estaría el audio generado con RVC]\n")
-        f.write(f"PTH: {model.pth_file}\n")
-        f.write(f"INDEX: {model.index_file}\n")
+    # Ensure paths are absolute strings for RVC
+    pth_path = str(Path(model.pth_file).absolute())
+    index_path = str(Path(model.index_file).absolute())
+    input_path_str = str(tts_path.absolute())
+    output_path_str = str(output_path.absolute())
     
+    try:
+        # Run inference in a separate thread to not block the event loop
+        # Since convert_audio is synchronous and might be heavy
+        await asyncio.to_thread(
+            infer_pipeline.convert_audio,
+            audio_input_path=input_path_str,
+            audio_output_path=output_path_str,
+            model_path=pth_path,
+            index_path=index_path,
+            sid=0,
+            pitch=pitch
+        )
+    except Exception as e:
+        # Cleanup on error
+        if tts_path.exists():
+            os.remove(tts_path)
+        raise HTTPException(status_code=500, detail=f"Error en inferencia RVC: {str(e)}")
+
     return {
-        "message": "TTS simulado generado (integra RVC para audio real)",
+        "message": "Audio generado exitosamente",
         "model_name": model.name,
         "text": text,
+        "tts_voice": tts_voice,
         "info_file": f"/audio/{output_filename}",
-        "note": "Para audio real, integra con RVC inference usando los archivos .pth y .index"
+        "raw_tts_file": f"/audio/{tts_filename}"
     }
 
 # Frontend

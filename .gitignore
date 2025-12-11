@@ -6,3 +6,4 @@ instance/
 uploads/
 voicehub.db
 voice_models.db
+audio_outputs/

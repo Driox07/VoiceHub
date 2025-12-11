@@ -72,3 +72,12 @@ SQLite3 en `voice_models.db`
 Los archivos se guardan en:
 - `uploads/` - Archivos .pth y .index
 - `audio_outputs/` - Audios generados por TTS
+
+## Licencia
+[VoiceHub](https://github.com/Driox07/VoiceHub) © 2025 by [Adrián Sánchez Galera & José Manuel de Torres Domínguez](https://github.com/Driox07 & https://github.com/PiporGames) is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+![cc](https://mirrors.creativecommons.org/presskit/icons/cc.svg)
+![by](https://mirrors.creativecommons.org/presskit/icons/by.svg)
+![nc](https://mirrors.creativecommons.org/presskit/icons/nc.svg)
+![sa](https://mirrors.creativecommons.org/presskit/icons/sa.svg)
+
+
