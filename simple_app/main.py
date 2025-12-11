@@ -322,6 +322,67 @@ async def test_tts(
         "raw_tts_file": f"/audio/{tts_filename}"
     }
 
+# Audio Testing Endpoint (Microphone)
+@app.post("/api/model/{model_id}/test-audio")
+async def test_audio(
+    model_id: int,
+    audio_file: UploadFile = File(...),
+    pitch: int = Form(0),
+    db: Session = Depends(get_db)
+):
+    """
+    Recibe audio grabado y aplica RVC.
+    """
+    model = db.query(models.Model).filter(models.Model.id == model_id).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Modelo no encontrado")
+    
+    # 1. Save uploaded audio
+    timestamp = datetime.now().timestamp()
+    input_filename = f"mic_input_{model_id}_{timestamp}.wav"
+    input_path = AUDIO_DIR / input_filename
+    
+    try:
+        with open(input_path, "wb") as buffer:
+            shutil.copyfileobj(audio_file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error guardando audio: {str(e)}")
+    
+    # 2. Apply RVC
+    output_filename = f"rvc_mic_out_{model_id}_{timestamp}.wav"
+    output_path = AUDIO_DIR / output_filename
+    
+    # Ensure paths are absolute strings for RVC
+    pth_path = str(Path(model.pth_file).absolute())
+    index_path = str(Path(model.index_file).absolute())
+    input_path_str = str(input_path.absolute())
+    output_path_str = str(output_path.absolute())
+    
+    try:
+        # Run inference in a separate thread
+        await asyncio.to_thread(
+            infer_pipeline.convert_audio,
+            audio_input_path=input_path_str,
+            audio_output_path=output_path_str,
+            model_path=pth_path,
+            index_path=index_path,
+            sid=0,
+            pitch=pitch
+        )
+    except Exception as e:
+        # Cleanup on error
+        if input_path.exists():
+            os.remove(input_path)
+        raise HTTPException(status_code=500, detail=f"Error en inferencia RVC: {str(e)}")
+
+    return {
+        "message": "Audio procesado exitosamente",
+        "model_name": model.name,
+        "type": "microphone",
+        "info_file": f"/audio/{output_filename}",
+        "raw_input_file": f"/audio/{input_filename}"
+    }
+
 # Frontend
 @app.get("/")
 async def home(request: Request, page: int = 1, search: str = None, db: Session = Depends(get_db)):

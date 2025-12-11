@@ -204,6 +204,70 @@
             padding: 40px;
             color: #666;
         }
+
+        .truncate-text {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+        
+        /* Tabs styles */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab-btn.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+            font-weight: 600;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .recording-controls {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .recording-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -239,8 +303,8 @@
                 {% for model in models %}
                 <tr>
                     <td>{{ model.id }}</td>
-                    <td><strong>{{ model.name }}</strong></td>
-                    <td>{{ model.description or '-' }}</td>
+                    <td><strong class="truncate-text" title="{{ model.name }}">{{ model.name }}</strong></td>
+                    <td><span class="truncate-text" title="{{ model.description }}">{{ model.description or '-' }}</span></td>
                     <td>{{ model.technology }}</td>
                     <td>{{ model.epochs }}</td>
                     <td>{{ model.language }}</td>
@@ -287,34 +351,61 @@
         </p>
     </div>
     
-    <!-- Modal Probar TTS -->
+    <!-- Modal Probar Modelo -->
     <div id="testModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeTestModal()">&times;</span>
-            <h2 id="testModalTitle">Probar Modelo TTS</h2>
-            <form id="testForm">
-                <input type="hidden" id="test_model_id">
-                
-                <div class="form-group">
-                    <label for="test_text">Texto a sintetizar</label>
-                    <textarea id="test_text" name="text" rows="4" placeholder="Escribe el texto que quieres convertir a voz..." required></textarea>
+            <h2 id="testModalTitle">Probar Modelo</h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('tts')">Texto a Voz (TTS)</button>
+                <button class="tab-btn" onclick="switchTab('mic')">Micrófono</button>
+            </div>
+
+            <input type="hidden" id="test_model_id">
+
+            <!-- Tab TTS -->
+            <div id="tab-tts" class="tab-content active">
+                <form id="testFormTTS">
+                    <div class="form-group">
+                        <label for="test_text">Texto a sintetizar</label>
+                        <textarea id="test_text" name="text" rows="4" placeholder="Escribe el texto que quieres convertir a voz..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tts_voice">Voz TTS Base</label>
+                        <select id="tts_voice" name="tts_voice" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="">Cargando voces...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pitch_tts">Pitch (Semitonos)</label>
+                        <input type="number" id="pitch_tts" name="pitch" value="0" step="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <small style="color: #666;">Ajuste de tono para RVC (ej: -12 para bajar una octava, +12 para subir)</small>
+                    </div>
+                    
+                    <button type="submit" class="btn" style="background: #6f42c1;">🎤 Generar Audio (TTS)</button>
+                </form>
+            </div>
+
+            <!-- Tab Micrófono -->
+            <div id="tab-mic" class="tab-content">
+                <div class="recording-controls">
+                    <div id="recordingStatus" style="margin-bottom: 10px; font-weight: bold; color: #666;">Listo para grabar</div>
+                    <button id="btnRecord" class="btn btn-danger" onclick="toggleRecording()">🔴 Grabar</button>
+                    <audio id="micPreview" controls style="display: none; width: 100%; margin-top: 10px;"></audio>
                 </div>
 
-                <div class="form-group">
-                    <label for="tts_voice">Voz TTS Base</label>
-                    <select id="tts_voice" name="tts_voice" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        <option value="">Cargando voces...</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="pitch">Pitch (Semitonos)</label>
-                    <input type="number" id="pitch" name="pitch" value="0" step="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                    <small style="color: #666;">Ajuste de tono para RVC (ej: -12 para bajar una octava, +12 para subir)</small>
-                </div>
-                
-                <button type="submit" class="btn" style="background: #6f42c1;">🎤 Generar Audio</button>
-            </form>
+                <form id="testFormMic" style="display: none;">
+                    <div class="form-group">
+                        <label for="pitch_mic">Pitch (Semitonos)</label>
+                        <input type="number" id="pitch_mic" name="pitch" value="0" step="1" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        <small style="color: #666;">Ajuste de tono para RVC</small>
+                    </div>
+                    <button type="submit" class="btn" style="background: #6f42c1;">🎤 Procesar Grabación</button>
+                </form>
+            </div>
             
             <div id="testResult" style="display: none; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 4px;">
                 <h3>Resultado:</h3>
@@ -476,21 +567,165 @@
             document.getElementById('test_model_id').value = modelId;
             document.getElementById('testModalTitle').textContent = `Probar: ${modelName}`;
             document.getElementById('testResult').style.display = 'none';
+            switchTab('tts'); // Default tab
         }
         
         function closeTestModal() {
             document.getElementById('testModal').style.display = 'none';
-            document.getElementById('testForm').reset();
+            document.getElementById('testFormTTS').reset();
+            document.getElementById('testFormMic').reset();
             document.getElementById('testResult').style.display = 'none';
+            stopRecording(); // Ensure recording stops
+            recordedBlob = null;
+            document.getElementById('micPreview').style.display = 'none';
+            document.getElementById('testFormMic').style.display = 'none';
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            // Activate button (simple logic assuming order)
+            const btnIndex = tabName === 'tts' ? 0 : 1;
+            document.querySelectorAll('.tab-btn')[btnIndex].classList.add('active');
+        }
+
+        // Recording Logic
+        let audioContext;
+        let mediaStream;
+        let scriptProcessor;
+        let input;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordedBlob = null;
+
+        async function toggleRecording() {
+            const btn = document.getElementById('btnRecord');
+            const status = document.getElementById('recordingStatus');
+            
+            if (!isRecording) {
+                // Start Recording
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaStream = stream;
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    input = audioContext.createMediaStreamSource(stream);
+                    
+                    // Buffer size 4096, 1 input channel, 1 output channel
+                    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+                    
+                    audioChunks = [];
+                    
+                    scriptProcessor.onaudioprocess = (e) => {
+                        if (!isRecording) return;
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        audioChunks.push(new Float32Array(inputData));
+                    };
+                    
+                    input.connect(scriptProcessor);
+                    scriptProcessor.connect(audioContext.destination);
+                    
+                    isRecording = true;
+                    btn.innerHTML = '<span class="recording-indicator"></span>Parar Grabación';
+                    status.textContent = "Grabando...";
+                    status.style.color = "#dc3545";
+                } catch (err) {
+                    console.error("Error accessing microphone:", err);
+                    alert("No se pudo acceder al micrófono. Asegúrate de dar permisos.");
+                }
+            } else {
+                // Stop Recording
+                stopRecording();
+                btn.innerHTML = '🔴 Grabar de nuevo';
+                status.textContent = "Grabación finalizada";
+                status.style.color = "#28a745";
+            }
+        }
+
+        function stopRecording() {
+            if (isRecording) {
+                isRecording = false;
+                
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+                if (scriptProcessor) {
+                    scriptProcessor.disconnect();
+                    input.disconnect();
+                }
+                
+                // Process audio
+                const wavBlob = exportWAV(audioChunks, audioContext.sampleRate);
+                recordedBlob = wavBlob;
+                
+                const audioUrl = URL.createObjectURL(recordedBlob);
+                const audio = document.getElementById('micPreview');
+                audio.src = audioUrl;
+                audio.style.display = 'block';
+                document.getElementById('testFormMic').style.display = 'block';
+            }
+        }
+
+        function exportWAV(chunks, sampleRate) {
+            let length = 0;
+            for (let i = 0; i < chunks.length; i++) {
+                length += chunks[i].length;
+            }
+            
+            const buffer = new Float32Array(length);
+            let offset = 0;
+            for (let i = 0; i < chunks.length; i++) {
+                buffer.set(chunks[i], offset);
+                offset += chunks[i].length;
+            }
+            
+            const wavBuffer = new ArrayBuffer(44 + buffer.length * 2);
+            const view = new DataView(wavBuffer);
+            
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + buffer.length * 2, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, buffer.length * 2, true);
+            
+            floatTo16BitPCM(view, 44, buffer);
+            
+            return new Blob([view], { type: 'audio/wav' });
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function floatTo16BitPCM(output, offset, input) {
+            for (let i = 0; i < input.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                output.setInt16(offset, s, true);
+            }
         }
         
-        document.getElementById('testForm').addEventListener('submit', async (e) => {
+        // Handle TTS Form
+        document.getElementById('testFormTTS').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const modelId = document.getElementById('test_model_id').value;
             const text = document.getElementById('test_text').value;
             const ttsVoice = document.getElementById('tts_voice').value;
-            const pitch = document.getElementById('pitch').value;
+            const pitch = document.getElementById('pitch_tts').value;
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.textContent;
@@ -508,33 +743,7 @@
                     body: formData
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('resultMessage').innerHTML = `
-                        <strong>Modelo:</strong> ${data.model_name}<br>
-                        <strong>Texto:</strong> ${data.text}<br>
-                        <strong>Voz Base:</strong> ${data.tts_voice}<br>
-                        <strong>Estado:</strong> ${data.message}<br>
-                    `;
-                    
-                    // Add timestamp to bypass cache
-                    const audioUrl = `${data.info_file}?t=${new Date().getTime()}`;
-                    const rawUrl = `${data.raw_tts_file}?t=${new Date().getTime()}`;
-                    
-                    document.getElementById('audioPlayer').innerHTML = `
-                        <audio controls autoplay style="width: 100%; margin-top: 10px;">
-                            <source src="${audioUrl}" type="audio/wav">
-                            Tu navegador no soporta el elemento de audio.
-                        </audio>
-                        <div style="margin-top: 5px;">
-                            <a href="${rawUrl}" target="_blank" style="font-size: 12px; color: #666;">Escuchar TTS original (sin RVC)</a>
-                        </div>
-                    `;
-                    document.getElementById('testResult').style.display = 'block';
-                } else {
-                    const err = await response.json();
-                    alert('Error al generar TTS: ' + (err.detail || 'Error desconocido'));
-                }
+                handleResponse(response);
             } catch (error) {
                 console.error(error);
                 alert('Error de conexión');
@@ -543,6 +752,81 @@
                 submitBtn.textContent = originalBtnText;
             }
         });
+
+        // Handle Mic Form
+        document.getElementById('testFormMic').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!recordedBlob) {
+                alert("Por favor graba un audio primero");
+                return;
+            }
+
+            const modelId = document.getElementById('test_model_id').value;
+            const pitch = document.getElementById('pitch_mic').value;
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = "⏳ Procesando...";
+            
+            const formData = new FormData();
+            formData.append('audio_file', recordedBlob, "recording.wav");
+            formData.append('pitch', pitch);
+            
+            try {
+                const response = await fetch(`/api/model/${modelId}/test-audio`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                handleResponse(response);
+            } catch (error) {
+                console.error(error);
+                alert('Error de conexión');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalBtnText;
+            }
+        });
+
+        async function handleResponse(response) {
+            if (response.ok) {
+                const data = await response.json();
+                let details = `<strong>Modelo:</strong> ${data.model_name}<br>`;
+                
+                if (data.type === 'microphone') {
+                    details += `<strong>Origen:</strong> Micrófono<br>`;
+                } else {
+                    details += `<strong>Texto:</strong> ${data.text}<br>
+                                <strong>Voz Base:</strong> ${data.tts_voice}<br>`;
+                }
+                
+                details += `<strong>Estado:</strong> ${data.message}<br>`;
+                
+                document.getElementById('resultMessage').innerHTML = details;
+                
+                // Add timestamp to bypass cache
+                const audioUrl = `${data.info_file}?t=${new Date().getTime()}`;
+                let rawUrl = "";
+                if (data.raw_tts_file) rawUrl = data.raw_tts_file;
+                if (data.raw_input_file) rawUrl = data.raw_input_file;
+                
+                document.getElementById('audioPlayer').innerHTML = `
+                    <audio controls autoplay style="width: 100%; margin-top: 10px;">
+                        <source src="${audioUrl}" type="audio/wav">
+                        Tu navegador no soporta el elemento de audio.
+                    </audio>
+                    <div style="margin-top: 5px;">
+                        <a href="${rawUrl}" target="_blank" style="font-size: 12px; color: #666;">Escuchar audio original (sin RVC)</a>
+                    </div>
+                `;
+                document.getElementById('testResult').style.display = 'block';
+            } else {
+                const err = await response.json();
+                alert('Error: ' + (err.detail || 'Error desconocido'));
+            }
+        }
         
         // Close modal when clicking outside
         window.onclick = function(event) {

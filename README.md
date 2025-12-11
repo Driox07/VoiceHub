@@ -9,6 +9,7 @@ API y frontend para gestionar modelos de voz RVC.
 - ✅ Búsqueda por nombre
 - ✅ Paginación (10 por página)
 - ✅ Probar modelos con TTS en la web 
+- ✅ Probar modelos con micrófono (grabación en navegador)
 - ✅ Documentación API automática en /docs
 - ✅ Base de datos SQLite3
 - ✅ Frontend con directorio de modelos
@@ -59,14 +60,22 @@ python run.py
 - `DELETE /api/model/{id}` - Eliminar modelo
 - `GET /api/model/{id}/download/{type}` - Descargar archivo (pth/index)
 - `POST /api/model/{id}/test-tts` - Probar modelo con TTS (simulado)
+- `POST /api/model/{id}/test-audio` - Probar modelo con audio (micrófono)
 
-## Probar Modelos (TTS)
+## Probar Modelos (TTS y Micrófono)
 
-Cada modelo tiene un botón "🎤 Probar" que permite al usuario probar el modelo con un sintetizador TTS:
+Cada modelo tiene un botón "🎤 Probar" que abre un modal con dos opciones:
+
+### 1. Texto a Voz (TTS)
 1. Escribir texto para sintetizar
 2. Selecciona el modelo TTS base que se usará para inferir
 3. Seleccionar el tono de voz (pitch)
 4. Se infiere el audio con RVC y se devuelve un archivo reproducible
+
+### 2. Micrófono
+1. Grabar un clip de audio directamente desde el navegador
+2. Seleccionar el tono de voz (pitch)
+3. El audio se envía al servidor y se procesa con RVC
 
 ## Base de Datos
 

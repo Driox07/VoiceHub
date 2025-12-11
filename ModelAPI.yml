@@ -280,3 +280,93 @@ paths:
                 format: binary
         '404':
           description: Archivo no encontrado
+
+  /model/{model_id}/test-tts:
+    post:
+      summary: Probar modelo con TTS
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                tts_voice:
+                  type: string
+                  default: "en-US-AriaNeural"
+                pitch:
+                  type: integer
+                  default: 0
+      responses:
+        '200':
+          description: Audio generado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  model_name:
+                    type: string
+                  text:
+                    type: string
+                  tts_voice:
+                    type: string
+                  info_file:
+                    type: string
+                  raw_tts_file:
+                    type: string
+
+  /model/{model_id}/test-audio:
+    post:
+      summary: Probar modelo con grabación de audio
+      parameters:
+        - name: model_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - audio_file
+              properties:
+                audio_file:
+                  type: string
+                  format: binary
+                pitch:
+                  type: integer
+                  default: 0
+      responses:
+        '200':
+          description: Audio procesado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  model_name:
+                    type: string
+                  type:
+                    type: string
+                  info_file:
+                    type: string
+                  raw_input_file:
+                    type: string
