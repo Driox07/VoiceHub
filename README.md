@@ -8,7 +8,7 @@ API y frontend para gestionar modelos de voz RVC.
 - ✅ Subida de archivos .pth y .index
 - ✅ Búsqueda por nombre
 - ✅ Paginación (10 por página)
-- ✅ **Probar modelos con TTS en la web** 🎤
+- ✅ Probar modelos con TTS en la web 
 - ✅ Documentación API automática en /docs
 - ✅ Base de datos SQLite3
 - ✅ Frontend con directorio de modelos
@@ -54,16 +54,7 @@ python -m uvicorn simple_app.main:app --reload
 
 Cada modelo tiene un botón "🎤 Probar" que abre un modal donde puedes:
 1. Escribir texto para sintetizar
-2. Generar audio con el modelo (simulado)
-
-**Nota:** La implementación actual es una simulación. Para audio real, integra con [RVC Inference](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI):
-
-```python
-# Ejemplo de integración real con RVC
-from infer import infer_pipeline
-pipeline = infer_pipeline(model.pth_file, model.index_file)
-audio = pipeline.synthesize(text)
-```
+2. Generar audio con el modelo y escucharlo
 
 ## Base de Datos
 
